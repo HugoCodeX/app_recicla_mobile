@@ -1,24 +1,59 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import { useEffect } from 'react';
+import { useAuthStore } from '../src/store/authStore';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { colors } from '../src/theme';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const { isHydrated, token, hydrate } = useAuthStore();
+  const segments = useSegments();
+  const router = useRouter();
+
+  // Hydrate auth state on startup
+  useEffect(() => {
+    hydrate();
+  }, []);
+
+  // Strict military-grade route protection guard
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    const inAuthGroup = segments[0] === '(app)';
+
+    if (!token && inAuthGroup) {
+      // Redirect to login if unauthenticated and trying to access (app)
+      router.replace('/');
+    } else if (token && !inAuthGroup) {
+      // Redirect away from login screen to new tabs layout if already authenticated
+      router.replace('/(app)/(tabs)' as any);
+    }
+  }, [token, isHydrated, segments]);
+
+  if (!isHydrated) {
+    return (
+      <View style={styles.splash}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(app)" />
       </Stack>
       <StatusBar style="auto" />
-    </ThemeProvider>
+    </>
   );
 }
+
+const styles = StyleSheet.create({
+  splash: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+});
