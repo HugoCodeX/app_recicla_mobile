@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import { LocateFixed } from 'lucide-react-native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useFocusEffect } from 'expo-router';
@@ -32,6 +32,7 @@ export default function HeartsScreen() {
   const [points, setPoints] = useState<CorazonPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   // Cargar puntos del backend una sola vez al montar
   useEffect(() => {
@@ -53,17 +54,15 @@ export default function HeartsScreen() {
   // Solicitar ubicación cada vez que el usuario vuelve a esta pantalla
   useFocusEffect(
     useCallback(() => {
-      // Resetear estados de ubicación al volver a la pantalla
-      setUserLocation(null);
-
+      let isActive = true;
       const loadLocation = async () => {
         try {
           const { status } = await Location.requestForegroundPermissionsAsync();
           if (status === 'granted') {
             const location = await Location.getCurrentPositionAsync({});
-            setUserLocation({ lat: location.coords.latitude, lng: location.coords.longitude });
-          } else {
-            // No se otorgó permiso, el mapa se centra en Concepción por defecto
+            if (isActive) {
+              setUserLocation({ lat: location.coords.latitude, lng: location.coords.longitude });
+            }
           }
         } catch (error) {
           console.error("Error obteniendo ubicación:", error);
@@ -71,11 +70,25 @@ export default function HeartsScreen() {
       };
 
       loadLocation();
+      return () => { isActive = false; };
     }, [])
   );
 
+  // Actualizar marcadores vía JavaScript (SIN recargar el WebView)
+  useEffect(() => {
+    if (mapLoaded && webviewRef.current) {
+      const script = `
+        if (typeof window.updateMap === 'function') {
+          window.updateMap(${JSON.stringify(JSON.stringify(points))}, ${JSON.stringify(JSON.stringify(userLocation))});
+        }
+        true;
+      `;
+      webviewRef.current.injectJavaScript(script);
+    }
+  }, [points, userLocation, mapLoaded]);
+
   const centerOnUser = () => {
-    if (userLocation && webviewRef.current) {
+    if (userLocation && webviewRef.current && mapLoaded) {
       webviewRef.current.injectJavaScript(`
         if (typeof map !== 'undefined') {
           map.setView([${userLocation.lat}, ${userLocation.lng}], 15);
@@ -95,42 +108,8 @@ export default function HeartsScreen() {
     } catch (e) {}
   };
 
-  const generateMapHTML = () => {
-    const mapThemeUrl = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
-
-    const markersJS = points.map(point => {
-      const lat = point.latitude ?? point.latitud ?? point.lat;
-      const lng = point.longitude ?? point.longitud ?? point.lng;
-      if (lat === undefined || lng === undefined) return '';
-
-      const title = (point.name || point.nombre || point.ciudad || 'Corazón').replace(/'/g, "\\'");
-      const desc = (point.description || point.direccion || '').replace(/'/g, "\\'");
-      const popup = `
-        <div style='font-family:sans-serif;min-width:160px'>
-          <b style='font-size:14px'>${title}</b><br>
-          <span style='font-size:12px;color:#666'>${desc}</span><br><br>
-          <button onclick="window.ReactNativeWebView.postMessage(JSON.stringify({type:'navigate',lat:${lat},lng:${lng}}))"
-            style='background:#2DB298;color:white;border:none;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;width:100%'>
-            &#x1F9ED; C\u00f3mo llegar
-          </button>
-        </div>
-      `.replace(/\n\s*/g, ' ');
-      return `L.marker([${lat}, ${lng}], { icon: heartIcon }).addTo(map).bindPopup('${popup.replace(/'/g, "\\'")}');`;
-    }).join('\n');
-
-    const userMarkerJS = userLocation
-      ? `
-        var devIcon = L.divIcon({
-          className: 'custom-div-icon',
-          html: "<div style='background-color:#3b82f6;width:18px;height:18px;border-radius:9px;border:3px solid white;box-shadow:0 0 5px rgba(0,0,0,0.5);'></div>",
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
-        });
-        L.marker([${userLocation.lat}, ${userLocation.lng}], { icon: devIcon }).addTo(map).bindPopup('<b>Tú estás aquí</b>');
-        map.setView([${userLocation.lat}, ${userLocation.lng}], 13);
-      `
-      : `map.setView([-36.8201, -73.0444], 12);`;
-
+  // HTML estático memorizado (solo recargará el WebView si cambia el tema claro/oscuro de forma forzada)
+  const mapHTML = useMemo(() => {
     return `
       <!DOCTYPE html>
       <html>
@@ -150,30 +129,77 @@ export default function HeartsScreen() {
       <body class="${theme === 'dark' ? 'dark-mode' : ''}">
           <div id="map"></div>
           <script>
-              var map = L.map('map', { zoomControl: false });
-              
-              ${userMarkerJS}
+            var map = L.map('map', { zoomControl: false });
+            L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 19 }).addTo(map);
+            
+            var heartIcon = L.divIcon({
+              className: '',
+              html: "<div style='font-size:42px;line-height:1;color:#e8192c;text-shadow:0 3px 8px rgba(0,0,0,0.4);'>&#9829;</div>",
+              iconSize: [42, 42],
+              iconAnchor: [21, 42],
+              popupAnchor: [0, -44]
+            });
 
-              L.tileLayer('${mapThemeUrl}', {
-                  maxZoom: 19
-              }).addTo(map);
+            var devIcon = L.divIcon({
+              className: 'custom-div-icon',
+              html: "<div style='background-color:#3b82f6;width:18px;height:18px;border-radius:9px;border:3px solid white;box-shadow:0 0 5px rgba(0,0,0,0.5);'></div>",
+              iconSize: [24, 24],
+              iconAnchor: [12, 12]
+            });
 
-              // Custom heart icon
-              var heartIcon = L.divIcon({
-                className: '',
-                html: "<div style='font-size:42px;line-height:1;color:#e8192c;text-shadow:0 3px 8px rgba(0,0,0,0.4);'>&#9829;</div>",
-                iconSize: [42, 42],
-                iconAnchor: [21, 42],
-                popupAnchor: [0, -44]
-              });
-              
-              // Marcadores desde el backend
-              ${markersJS}
+            var markersLayer = L.layerGroup().addTo(map);
+            var userMarker = null;
+            var isFirstLocate = true;
+
+            // Función global accesible por inyección de React Native
+            window.updateMap = function(pointsJson, userLocJson) {
+              try {
+                var points = JSON.parse(pointsJson);
+                markersLayer.clearLayers();
+                
+                points.forEach(function(p) {
+                  var lat = p.latitude || p.latitud || p.lat;
+                  var lng = p.longitude || p.longitud || p.lng;
+                  if (lat === undefined || lng === undefined) return;
+                  
+                  var title = (p.name || p.nombre || p.ciudad || 'Corazón').replace(/'/g, "\\\\'");
+                  var desc = (p.description || p.direccion || '').replace(/'/g, "\\\\'");
+                  var popupHtml = "<div style='font-family:sans-serif;min-width:160px'>" +
+                    "<b style='font-size:14px'>" + title + "</b><br>" +
+                    "<span style='font-size:12px;color:#666'>" + desc + "</span><br><br>" +
+                    "<button onclick=\\"window.ReactNativeWebView.postMessage(JSON.stringify({type:'navigate',lat:" + lat + ",lng:" + lng + "}))\\" " +
+                    "style='background:#2DB298;color:white;border:none;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;width:100%'>" +
+                    "📍 Cómo llegar</button></div>";
+                    
+                  L.marker([lat, lng], { icon: heartIcon }).addTo(markersLayer).bindPopup(popupHtml);
+                });
+
+                var loc = userLocJson ? JSON.parse(userLocJson) : null;
+                if (loc && loc.lat && loc.lng) {
+                  if (userMarker) {
+                    userMarker.setLatLng([loc.lat, loc.lng]);
+                  } else {
+                    userMarker = L.marker([loc.lat, loc.lng], { icon: devIcon }).addTo(map).bindPopup('<b>Tú estás aquí</b>');
+                    if (isFirstLocate) {
+                      map.setView([loc.lat, loc.lng], 13);
+                      isFirstLocate = false;
+                    }
+                  }
+                } else if (!userMarker && points.length === 0) {
+                  map.setView([-36.8201, -73.0444], 12);
+                }
+              } catch (e) {
+                console.error("Error injectando datos al mapa:", e);
+              }
+            };
+            
+            // Si carga vacío y sin red, default view
+            map.setView([-36.8201, -73.0444], 12);
           </script>
       </body>
       </html>
     `;
-  };
+  }, [theme, colors.background]);
 
   return (
     <View style={styles.container}>
@@ -186,11 +212,12 @@ export default function HeartsScreen() {
           <WebView
             ref={webviewRef}
             originWhitelist={['*']}
-            source={{ html: generateMapHTML() }}
+            source={{ html: mapHTML }}
             style={styles.map}
             scrollEnabled={false}
             bounces={false}
             onMessage={handleWebViewMessage}
+            onLoadEnd={() => setMapLoaded(true)}
           />
           {userLocation && (
             <TouchableOpacity

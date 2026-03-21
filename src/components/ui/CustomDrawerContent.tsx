@@ -1,9 +1,9 @@
-import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { useRouter } from 'expo-router';
 import { FileText, Key, LogOut, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
+import { Image } from 'expo-image';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../../api/index';
 import { useAuthStore } from '../../store/authStore';
 import { useAppTheme } from '../../store/themeStore';
@@ -63,13 +63,30 @@ export function CustomDrawerContent(props: any) {
 
   const avatarName = userData?.name ? encodeURIComponent(userData.name) : 'Usuario';
 
+  // En Android con edgeToEdge, useSafeAreaInsets a veces no detecta bien
+  // los insets dentro del overlay del Drawer. Usamos StatusBar.currentHeight como fallback.
+  const topInset = Platform.OS === 'android'
+    ? Math.max(insets.top, StatusBar.currentHeight || 0)
+    : insets.top;
+  const bottomInset = Math.max(insets.bottom, 20);
+
   return (
-    <View style={[styles.container, { 
-      backgroundColor: colors.surface, 
-      paddingTop: Math.max(insets.top, 24) + spacing.md,
-      paddingBottom: Math.max(insets.bottom, 24)
-    }]}>
-      <DrawerContentScrollView {...props} style={{ flex: 1 }} contentContainerStyle={{ paddingTop: 0 }}>
+    <SafeAreaProvider>
+      <View 
+        style={[styles.container, { 
+          backgroundColor: colors.surface,
+          paddingTop: topInset + spacing.sm,
+          paddingBottom: bottomInset,
+        }]}
+      >
+      <ScrollView 
+        {...props} 
+        style={{ flex: 1 }} 
+        contentContainerStyle={{ paddingTop: spacing.md }}
+        bounces={false}
+        overScrollMode="never"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={[styles.profileSection, { borderBottomColor: colors.border }]}>
           <Image 
             source={{ uri: `https://ui-avatars.com/api/?name=${avatarName}&background=2acf80&color=fff&size=128` }} 
@@ -102,7 +119,7 @@ export function CustomDrawerContent(props: any) {
             onPress={() => {}} 
           />
         </View>
-      </DrawerContentScrollView>
+      </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: spacing.md, borderTopColor: colors.border }]}>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -111,6 +128,7 @@ export function CustomDrawerContent(props: any) {
         </TouchableOpacity>
       </View>
     </View>
+    </SafeAreaProvider>
   );
 }
 

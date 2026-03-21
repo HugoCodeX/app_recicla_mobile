@@ -2,8 +2,11 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useAuthStore } from '../src/store/authStore';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { colors } from '../src/theme';
+import * as SplashScreen from 'expo-splash-screen';
+import { StyleSheet } from 'react-native';
+
+// Mantiene el splash screen visible mientras se cargan los recursos o el token
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { isHydrated, token, hydrate } = useAuthStore();
@@ -30,12 +33,15 @@ export default function RootLayout() {
     }
   }, [token, isHydrated, segments]);
 
+  useEffect(() => {
+    if (isHydrated) {
+      // Oculta el splash screen nativo cuando Zustand ha cargado el token
+      SplashScreen.hideAsync();
+    }
+  }, [isHydrated]);
+
   if (!isHydrated) {
-    return (
-      <View style={styles.splash}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+    return null; // El framework prefiere null antes que retornar un <View> plano fuera del Router Context
   }
 
   return (
@@ -50,10 +56,5 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  splash: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-  },
+  // Se eliminaron estilos huérfanos del splash anterior
 });

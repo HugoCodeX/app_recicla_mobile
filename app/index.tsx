@@ -28,7 +28,11 @@ export default function LoginScreen() {
     }
   });
 
-  const { token, setToken, isLoading, setLoading, error: globalError, setError } = useAuthStore();
+  const setToken = useAuthStore((state) => state.setToken);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const setLoading = useAuthStore((state) => state.setLoading);
+  const globalError = useAuthStore((state) => state.error);
+  const setError = useAuthStore((state) => state.setError);
 
   const onSubmit = async (data: any) => {
     setLoading(true);
@@ -47,8 +51,9 @@ export default function LoginScreen() {
         router.replace('/(app)/(tabs)' as any);
       } else {
         // Fallback for different response structure or error handling
-        Alert.alert('Éxito', 'Inicio de sesión correcto pero no se recibió token.');
-        router.replace('/(app)/(tabs)' as any);
+        Alert.alert('Éxito', 'Inicio de sesión correcto pero no se recibió token.', [
+          { text: 'OK', onPress: () => router.replace('/(app)/(tabs)' as any) }
+        ]);
       }
     } catch (err: any) {
       console.error(err);

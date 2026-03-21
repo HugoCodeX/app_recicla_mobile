@@ -1,7 +1,9 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { useAuthStore } from '../store/authStore';
 
-export const API_URL = 'https://backend-recicla-zn6v.onrender.com/api';
+// La URL backend se lee del archivo .env a través de EXPO_PUBLIC_API_URL.
+// En caso de que no exista el archivo .env, usa el valor por defecto provisto.
+export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://backend-recicla-zn6v.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -12,14 +14,10 @@ const api = axios.create({
 
 // Add a request interceptor to inject the token if it exists
 api.interceptors.request.use(
-  async (config) => {
-    try {
-      const token = await SecureStore.getItemAsync('auth_token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } catch (e) {
-        // Token read fail
+  (config) => {
+    const token = useAuthStore.getState().token;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
