@@ -78,13 +78,17 @@ export default function DatosPersonalesScreen() {
     }
     setSaving(true);
     try {
-      await api.post('/auth/update-user', {
+      // Better Auth suele rechazar actualizaciones directas del email por seguridad
+      // (requiere de endpoints de verificación). Solo enviamos los campos permitidos y con datos.
+      const payload: any = {
         name: form.nombre,
-        rut: form.rut,
-        email: form.correo,
-        phone: form.telefono,
-        address: form.direccion
-      });
+      };
+
+      if (form.rut) payload.rut = form.rut;
+      if (form.telefono) payload.phone = form.telefono;
+      if (form.direccion) payload.address = form.direccion;
+
+      await api.post('/auth/update-user', payload);
       Alert.alert('Éxito', 'Datos guardados correctamente.');
     } catch (error) {
       console.error('Error al actualizar datos:', error);

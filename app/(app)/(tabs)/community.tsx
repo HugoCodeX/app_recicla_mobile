@@ -25,9 +25,11 @@ const getStyles = (colors: any) => StyleSheet.create({
   title: {
     ...typography.h1,
     marginBottom: spacing.sm,
+    color: colors.text,
   },
   subtitle: {
     ...typography.body,
     textAlign: 'center',
+    color: colors.textSecondary,
   },
 });

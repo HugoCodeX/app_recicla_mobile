@@ -1,8 +1,10 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useThemeStore } from '../src/store/themeStore';
 import { useEffect } from 'react';
 import { useAuthStore } from '../src/store/authStore';
 import * as SplashScreen from 'expo-splash-screen';
+import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { StyleSheet } from 'react-native';
 
 // Mantiene el splash screen visible mientras se cargan los recursos o el token
@@ -10,6 +12,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { isHydrated, token, hydrate } = useAuthStore();
+  const { theme } = useThemeStore();
   const segments = useSegments();
   const router = useRouter();
 
@@ -45,13 +48,13 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <ThemeProvider value={theme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(app)" />
       </Stack>
-      <StatusBar style="auto" />
-    </>
+      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
+    </ThemeProvider>
   );
 }
 

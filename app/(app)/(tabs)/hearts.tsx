@@ -121,16 +121,14 @@ export default function HeartsScreen() {
             body, html { padding: 0; margin: 0; width: 100%; height: 100%; } 
             #map { width: 100%; height: 100%; background-color: ${colors.background}; } 
             .leaflet-control-attribution { display: none; }
-            .dark-mode .leaflet-tile-pane {
-              filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
-            }
           </style>
       </head>
       <body class="${theme === 'dark' ? 'dark-mode' : ''}">
           <div id="map"></div>
           <script>
             var map = L.map('map', { zoomControl: false });
-            L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 19 }).addTo(map);
+            var tileUrl = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+            L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(map);
             
             var heartIcon = L.divIcon({
               className: '',
@@ -217,7 +215,20 @@ export default function HeartsScreen() {
             scrollEnabled={false}
             bounces={false}
             onMessage={handleWebViewMessage}
-            onLoadEnd={() => setMapLoaded(true)}
+            onLoadEnd={() => {
+              setMapLoaded(true);
+              // Si el WebView se recarga (ej. por cambio de tema oscuro/claro),
+              // tenemos que volver a inyectar los corazones porque el DOM de Leaflet se reinició.
+              if (webviewRef.current) {
+                const script = `
+                  if (typeof window.updateMap === 'function') {
+                    window.updateMap(${JSON.stringify(JSON.stringify(points))}, ${JSON.stringify(JSON.stringify(userLocation))});
+                  }
+                  true;
+                `;
+                webviewRef.current.injectJavaScript(script);
+              }
+            }}
           />
           {userLocation && (
             <TouchableOpacity

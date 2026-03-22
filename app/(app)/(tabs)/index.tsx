@@ -48,12 +48,23 @@ const getStyles = (colors: any) => StyleSheet.create({
     elevation: 2,
     marginBottom: spacing.xl,
   },
+  welcomeTitle: {
+    ...typography.h2,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  welcomeSubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
   title: {
     ...typography.h2,
+    color: colors.text,
     marginBottom: spacing.md,
   },
   bodyText: {
     ...typography.body,
+    color: colors.textSecondary,
     lineHeight: 24,
   },
   logoutButton: {

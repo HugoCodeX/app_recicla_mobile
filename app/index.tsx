@@ -152,10 +152,12 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   title: {
     ...typography.h1,
+    color: colors.text,
     marginBottom: spacing.xs,
   },
   subtitle: {
     ...typography.body,
+    color: colors.textSecondary,
   },
   form: {
     width: '100%',

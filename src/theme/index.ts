@@ -29,20 +29,16 @@ export const typography = {
   h1: {
     fontSize: 32,
     fontWeight: '700' as const,
-    color: colors.text,
   },
   h2: {
     fontSize: 24,
     fontWeight: '600' as const,
-    color: colors.text,
   },
   body: {
     fontSize: 16,
-    color: colors.textSecondary,
   },
   caption: {
     fontSize: 14,
-    color: colors.textSecondary,
   },
 };
 
