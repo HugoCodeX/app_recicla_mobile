@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, FileText, Mail, MapPin, Phone, Save, User } from 'lucide-react-native';
+import { Camera, ChevronLeft, FileText, Mail, MapPin, Phone, Save, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -13,6 +13,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../../src/api';
 import { useAppTheme } from '../../src/store/themeStore';
@@ -32,6 +34,8 @@ export default function DatosPersonalesScreen() {
   });
   const [saving, setSaving] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [userImage, setUserImage] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -46,6 +50,7 @@ export default function DatosPersonalesScreen() {
           telefono: user.phone || user.telefono || '',
           direccion: user.address || user.direccion || '',
         });
+        if (user.image) setUserImage(user.image);
       } catch (error) {
         console.error('Error cargando sesion:', error);
       } finally {
@@ -54,6 +59,49 @@ export default function DatosPersonalesScreen() {
     };
     fetchSession();
   }, []);
+
+  const handlePickImage = async () => {
+    const permResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permResult.granted) {
+      Alert.alert('Permiso denegado', 'Se necesita acceso a la galería para cambiar tu foto.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const asset = result.assets[0];
+    setUploadingImage(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', {
+        uri: asset.uri,
+        name: `profile-${Date.now()}.jpg`,
+        type: 'image/jpeg',
+      } as any);
+
+      const response = await api.post('/v1/usuarios/me/upload-avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (response.data?.imageUrl) {
+        setUserImage(response.data.imageUrl);
+        Alert.alert('Éxito', 'Foto de perfil actualizada.');
+      }
+    } catch (error: any) {
+      console.error('Error subiendo imagen:', error?.response?.data || error.message);
+      Alert.alert('Error', 'No se pudo subir la imagen. Intenta de nuevo.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleChange = (field: keyof typeof form, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -173,10 +221,23 @@ export default function DatosPersonalesScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Avatar placeholder */}
-          <View style={[styles.avatarContainer, { backgroundColor: colors.primary + '20' }]}>
-            <User size={40} color={colors.primary} />
-          </View>
+          {/* Avatar con opción de cambiar foto */}
+          <TouchableOpacity 
+            style={[styles.avatarContainer, { backgroundColor: colors.primary + '20' }]}
+            onPress={handlePickImage}
+            disabled={uploadingImage}
+          >
+            {uploadingImage ? (
+              <ActivityIndicator size="large" color={colors.primary} />
+            ) : userImage ? (
+              <Image source={{ uri: userImage }} style={styles.avatarImage} />
+            ) : (
+              <User size={40} color={colors.primary} />
+            )}
+            <View style={[styles.cameraIcon, { backgroundColor: colors.primary }]}>
+              <Camera size={14} color="#fff" />
+            </View>
+          </TouchableOpacity>
 
           {/* Form fields */}
           <View style={styles.form}>
@@ -261,6 +322,24 @@ const getStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.xl,
     marginTop: spacing.md,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+  },
+  cameraIcon: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   form: {
     gap: spacing.lg,

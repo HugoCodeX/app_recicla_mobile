@@ -8,6 +8,7 @@ export const lightColors = {
   border: '#e2e8f0',
   error: '#ef4444',
   success: '#10b981',
+  warning: '#f59e0b',
 };
 
 export const darkColors = {
@@ -20,6 +21,7 @@ export const darkColors = {
   border: '#27272A',
   error: '#f87171',
   success: '#34d399',
+  warning: '#fbbf24',
 };
 
 // Default static export for components not yet migrated to useAppTheme hook
@@ -33,6 +35,14 @@ export const typography = {
   h2: {
     fontSize: 24,
     fontWeight: '600' as const,
+  },
+  h3: {
+    fontSize: 20,
+    fontWeight: '600' as const,
+  },
+  subtitle: {
+    fontSize: 18,
+    fontWeight: '500' as const,
   },
   body: {
     fontSize: 16,
@@ -57,4 +67,5 @@ export const radius = {
   lg: 16,
   xl: 24,
   full: 9999,
+  round: 9999,
 };

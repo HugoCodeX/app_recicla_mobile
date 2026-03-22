@@ -15,7 +15,7 @@ export function CustomDrawerContent(props: any) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const [userData, setUserData] = useState<{name: string, role: string} | null>(null);
+  const [userData, setUserData] = useState<{name: string, role: string, image?: string | null} | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,7 +37,8 @@ export function CustomDrawerContent(props: any) {
         
         setUserData({
           name: user.name || 'Usuario',
-          role: roleName
+          role: roleName,
+          image: user.image || null,
         });
       } catch (error) {
         console.error('Error cargando la sesión en sidebar:', error);
@@ -89,7 +90,7 @@ export function CustomDrawerContent(props: any) {
       >
         <View style={[styles.profileSection, { borderBottomColor: colors.border }]}>
           <Image 
-            source={{ uri: `https://ui-avatars.com/api/?name=${avatarName}&background=2acf80&color=fff&size=128` }} 
+            source={{ uri: userData?.image || `https://ui-avatars.com/api/?name=${avatarName}&background=2acf80&color=fff&size=128` }} 
             style={styles.avatar} 
           />
           {loading ? (

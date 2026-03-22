@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "505898211218",
+    "project_id": "recicla-d8a95",
+    "storage_bucket": "recicla-d8a95.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:505898211218:android:3bddc85e7b5edd4bd4134b",
+        "android_client_info": {
+          "package_name": "com.hugo.programador.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDPl8mcll4btYS2ybEayvRnbESCc-JqvBs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
